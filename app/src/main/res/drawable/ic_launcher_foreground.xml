@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- amber tile with a play mark and three "cut" ticks, kept inside the 66dp safe zone -->
+    <path
+        android:fillColor="#F4B53F"
+        android:pathData="M38,30h32a8,8 0,0 1,8 8v32a8,8 0,0 1,-8 8h-32a8,8 0,0 1,-8 -8v-32a8,8 0,0 1,8 -8z" />
+    <path
+        android:fillColor="#1E1606"
+        android:pathData="M47,42L65,54L47,66Z" />
+    <path
+        android:fillColor="#1E1606"
+        android:pathData="M36,72h6v2h-6zM46,72h10v2h-10zM60,72h12v2h-12z" />
+</vector>

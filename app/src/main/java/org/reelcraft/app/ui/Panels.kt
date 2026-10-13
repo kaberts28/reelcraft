@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.sp
 import org.reelcraft.app.CaptionStyle
 import org.reelcraft.app.EditorViewModel
 import org.reelcraft.app.ExportState
+import org.reelcraft.app.GallerySave
 import org.reelcraft.app.Framing
 import org.reelcraft.app.Speech
 import org.reelcraft.app.formatTime
@@ -424,6 +425,23 @@ fun ExportPanel(vm: EditorViewModel) {
                             },
                             enabled = !vm.savingToGallery,
                         ) { Text(if (vm.savingToGallery) "Saving…" else "Save to gallery") }
+                    }
+                    when (val g = vm.gallerySave) {
+                        is GallerySave.Saved -> {
+                            Text("Saved ✓  ${g.where}", color = Palette.Teal, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                            g.uri?.let { uri ->
+                                TextButton(onClick = {
+                                    runCatching { context.startActivity(vm.openSavedIntent(uri)) }
+                                        .onFailure { vm.message = "No app found to play the video." }
+                                }) { Text("Open saved video") }
+                            }
+                        }
+                        is GallerySave.Failed -> {
+                            Text("Couldn't save to the gallery", color = Palette.Danger, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                            Text(g.message, fontSize = 12.sp, fontFamily = FontFamily.Monospace, color = Palette.Muted)
+                            Note("Please send a screenshot of this to the developer. Sharing still works in the meantime.")
+                        }
+                        else -> {}
                     }
                 }
             }

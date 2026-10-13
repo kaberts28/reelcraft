@@ -95,12 +95,12 @@ fun EditorScreen(vm: EditorViewModel) {
         pickVideos.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
     }
     val snackbar = remember { SnackbarHostState() }
+    // Show the message first and clear it only after it's dismissed. Clearing it earlier
+    // changes this effect's key, which cancels the snackbar before anyone can read it.
     LaunchedEffect(vm.message) {
-        val m = vm.message
-        if (m != null) {
-            vm.message = null
-            snackbar.showSnackbar(m)
-        }
+        val m = vm.message ?: return@LaunchedEffect
+        snackbar.showSnackbar(m, withDismissAction = true)
+        if (vm.message == m) vm.message = null
     }
     var tab by rememberSaveable { mutableIntStateOf(0) }
 

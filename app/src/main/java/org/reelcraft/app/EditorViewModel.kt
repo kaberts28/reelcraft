@@ -442,6 +442,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             .build()
         transformer = t
         exportState = ExportState.Running(0)
+        gallerySave = null
         t.start(composition, out.absolutePath)
         viewModelScope.launch {
             val holder = ProgressHolder()
@@ -475,38 +476,66 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     /** Android 8 and 9 need the storage permission to write into the shared camera folder. */
     val needsStoragePermission: Boolean get() = Build.VERSION.SDK_INT < Build.VERSION_CODES.Q
 
-    var savingToGallery by mutableStateOf(false); private set
+    /** Result of the last Save to gallery, shown on the Export screen. */
+    var gallerySave by mutableStateOf<GallerySave?>(null); private set
+    val savingToGallery: Boolean get() = gallerySave is GallerySave.Saving
 
     fun saveToGallery(file: File) {
         if (savingToGallery) return
         if (!file.exists() || file.length() == 0L) {
-            message = "The exported video is missing. Please export again."
+            gallerySave = GallerySave.Failed("The exported video is missing. Please export again.")
             return
         }
-        savingToGallery = true
+        gallerySave = GallerySave.Saving
         viewModelScope.launch {
-            val error = withContext(Dispatchers.IO) {
+            val result = withContext(Dispatchers.IO) {
                 runCatching {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) saveWithMediaStore(file) else saveLegacy(file)
-                }.exceptionOrNull()
+                }
             }
-            savingToGallery = false
-            message = if (error == null) "Saved to your gallery (Camera folder › ReelCraft)."
-            else "Couldn't save to the gallery: ${error.message ?: error.javaClass.simpleName}"
+            gallerySave = result.fold(
+                onSuccess = { it },
+                onFailure = { e ->
+                    GallerySave.Failed(
+                        "${e.message ?: e.javaClass.simpleName} (Android ${Build.VERSION.RELEASE}, ${Build.MANUFACTURER} ${Build.MODEL})"
+                    )
+                },
+            )
+            message = when (val g = gallerySave) {
+                is GallerySave.Saved -> "Saved to ${g.where}."
+                is GallerySave.Failed -> "Couldn't save to the gallery."
+                else -> null
+            }
         }
     }
 
     @androidx.annotation.RequiresApi(Build.VERSION_CODES.Q)
-    private fun saveWithMediaStore(file: File) {
+    private fun saveWithMediaStore(file: File): GallerySave.Saved {
+        // Camera folder first (every gallery shows it), then Movies if a phone refuses DCIM.
+        val folders = listOf(
+            Environment.DIRECTORY_DCIM + "/ReelCraft" to "Gallery › Camera › ReelCraft",
+            Environment.DIRECTORY_MOVIES + "/ReelCraft" to "Gallery › Movies › ReelCraft",
+        )
+        var last: Exception? = null
+        for ((path, label) in folders) {
+            try {
+                return GallerySave.Saved(insertVideo(file, path), label)
+            } catch (e: Exception) {
+                last = e
+            }
+        }
+        throw last ?: IllegalStateException("unknown error")
+    }
+
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.Q)
+    private fun insertVideo(file: File, relativePath: String): Uri {
         val resolver = ctx.contentResolver
         val collection = MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-        val now = System.currentTimeMillis()
         val values = ContentValues().apply {
             put(MediaStore.Video.Media.DISPLAY_NAME, file.name)
             put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
-            put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_DCIM + "/ReelCraft")
-            put(MediaStore.Video.Media.DATE_TAKEN, now)
-            put(MediaStore.Video.Media.DATE_ADDED, now / 1000)
+            put(MediaStore.Video.Media.RELATIVE_PATH, relativePath)
+            put(MediaStore.Video.Media.DATE_TAKEN, System.currentTimeMillis())
             put(MediaStore.Video.Media.IS_PENDING, 1)
         }
         val uri = resolver.insert(collection, values) ?: error("the phone refused to create the file")
@@ -515,6 +544,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             out.use { o -> file.inputStream().use { it.copyTo(o) } }
             val done = ContentValues().apply { put(MediaStore.Video.Media.IS_PENDING, 0) }
             resolver.update(uri, done, null, null)
+            return uri
         } catch (e: Exception) {
             runCatching { resolver.delete(uri, null, null) }
             throw e
@@ -522,13 +552,17 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     @Suppress("DEPRECATION")
-    private fun saveLegacy(file: File) {
+    private fun saveLegacy(file: File): GallerySave.Saved {
         val dir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM), "ReelCraft")
         if (!dir.exists() && !dir.mkdirs()) error("couldn't create the ReelCraft folder")
         val target = File(dir, file.name)
         file.copyTo(target, overwrite = true)
         android.media.MediaScannerConnection.scanFile(ctx, arrayOf(target.absolutePath), arrayOf("video/mp4"), null)
+        return GallerySave.Saved(null, "Gallery › Camera › ReelCraft")
     }
+
+    fun openSavedIntent(uri: Uri): Intent =
+        Intent(Intent.ACTION_VIEW).setDataAndType(uri, "video/mp4").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
 
     override fun onCleared() {
         transformer?.cancel()

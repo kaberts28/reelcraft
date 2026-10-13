@@ -58,3 +58,10 @@ fun formatTime(ms: Long): String {
     val seconds = (t % 600) / 10.0
     return String.format(Locale.US, "%d:%04.1f", minutes, seconds)
 }
+
+sealed interface GallerySave {
+    data object Saving : GallerySave
+    /** [uri] can be null on Android 8-9, where the file is written directly. */
+    data class Saved(val uri: Uri?, val where: String) : GallerySave
+    data class Failed(val message: String) : GallerySave
+}

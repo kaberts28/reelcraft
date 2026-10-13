@@ -8,7 +8,7 @@ import androidx.media3.common.audio.ChannelMixingAudioProcessor
 import androidx.media3.common.audio.ChannelMixingMatrix
 import androidx.media3.effect.OverlayEffect
 import androidx.media3.effect.Presentation
-import androidx.media3.effect.StaticOverlaySettings
+import androidx.media3.effect.OverlaySettings
 import androidx.media3.effect.TextOverlay
 import androidx.media3.effect.TextureOverlay
 import androidx.media3.transformer.Composition
@@ -59,7 +59,7 @@ object Exporter {
             if (piece.caption.isNotBlank()) {
                 overlays += TextOverlay.createStaticTextOverlay(
                     CaptionLook.spannable(piece.caption, fg, bg, capPx),
-                    StaticOverlaySettings.Builder()
+                    OverlaySettings.Builder()
                         .setBackgroundFrameAnchor(0f, 1f - 2f * plan.captionPos)
                         .build()
                 )
@@ -67,7 +67,7 @@ object Exporter {
             if (index == 0 && plan.hookText.isNotBlank()) {
                 overlays += TextOverlay.createStaticTextOverlay(
                     CaptionLook.spannable(plan.hookText.uppercase(), CaptionLook.AMBER_INK, CaptionLook.AMBER, hookPx),
-                    StaticOverlaySettings.Builder()
+                    OverlaySettings.Builder()
                         .setBackgroundFrameAnchor(0f, 1f - 2f * CaptionLook.HOOK_POSITION)
                         .build()
                 )

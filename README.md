@@ -21,10 +21,11 @@ There is also a browser version of the first prototype in [`web/index.html`](web
 |---|---|
 | Import | Pick several videos from your gallery |
 | Edit | Trim each piece, split at the playhead, reorder, delete |
+| Zoom | Crop into a clip and move the frame, for example to remove black bars baked into reposted videos |
 | Auto-cut | Finds the quiet gaps between sentences and removes them, with a sound graph showing what's kept |
 | Captions | One caption line per piece, two styles, adjustable size and height, plus a "hook" line at the top of the first piece |
 | Audio | Clip volume, looping background music with its own volume |
-| Export | Vertical MP4 at 720p or 1080p, then share straight to TikTok or WhatsApp, or save to your gallery |
+| Export | Vertical MP4 at 720p or 1080p, then share straight to TikTok or WhatsApp, or save to your gallery (Camera folder › ReelCraft) |
 
 ## Roadmap
 

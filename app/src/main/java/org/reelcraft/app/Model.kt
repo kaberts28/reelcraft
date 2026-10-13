@@ -12,6 +12,11 @@ data class Source(
     val name: String,
     val durationMs: Long,
     val thumb: ImageBitmap?,
+    /** 1 = no zoom. Applies to every piece cut from this clip. */
+    val zoom: Float = 1f,
+    /** -1..1: where the zoomed frame sits. +x shows more of the right side, +y more of the bottom. */
+    val panX: Float = 0f,
+    val panY: Float = 0f,
 )
 
 /** One stretch of a source placed on the timeline. */

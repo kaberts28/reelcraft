@@ -2,7 +2,9 @@
 
 package org.reelcraft.app.ui
 
+import android.view.LayoutInflater
 import android.view.ViewGroup
+import org.reelcraft.app.R
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -206,16 +208,28 @@ private fun PreviewStage(vm: EditorViewModel, modifier: Modifier) {
         Box(Modifier.size(w, h).background(Color.Black).border(1.dp, Palette.Line)) {
             AndroidView(
                 factory = { c ->
-                    PlayerView(c).apply {
-                        useController = false
+                    (LayoutInflater.from(c).inflate(R.layout.player_view, null) as PlayerView).apply {
                         player = vm.player
-                        setShutterBackgroundColor(android.graphics.Color.BLACK)
                         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
                     }
                 },
-                update = {
-                    it.resizeMode = if (vm.framing == Framing.FILL)
+                update = { pv ->
+                    pv.resizeMode = if (vm.framing == Framing.FILL)
                         AspectRatioFrameLayout.RESIZE_MODE_ZOOM else AspectRatioFrameLayout.RESIZE_MODE_FIT
+                    val src = vm.pieces.getOrNull(vm.currentIndex)?.let { vm.source(it.sourceId) }
+                    val z = src?.zoom ?: 1f
+                    val px = src?.panX ?: 0f
+                    val py = src?.panY ?: 0f
+                    val applyZoom = {
+                        pv.videoSurfaceView?.apply {
+                            scaleX = z
+                            scaleY = z
+                            translationX = -px * (z - 1f) * pv.width / 2f
+                            translationY = -py * (z - 1f) * pv.height / 2f
+                        }
+                    }
+                    applyZoom()
+                    if (pv.width == 0) pv.post { applyZoom() }
                 },
                 modifier = Modifier.fillMaxSize(),
             )

@@ -1,7 +1,9 @@
 package org.reelcraft.app
 
+import android.graphics.Matrix
 import android.net.Uri
 import androidx.media3.common.Effect
+import androidx.media3.effect.MatrixTransformation
 import androidx.media3.common.MediaItem
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.audio.ChannelMixingAudioProcessor
@@ -75,6 +77,7 @@ object Exporter {
 
             val video = ArrayList<Effect>()
             video += Presentation.createForWidthAndHeight(plan.width, plan.height, layout)
+            if (src.zoom > 1.001f) video += zoomEffect(src.zoom, src.panX, src.panY)
             if (overlays.isNotEmpty()) video += OverlayEffect(ImmutableList.copyOf(overlays))
 
             val audio = ArrayList<AudioProcessor>()
@@ -96,6 +99,17 @@ object Exporter {
         return Composition.Builder(sequences)
             .experimentalSetForceAudioTrack(true)
             .build()
+    }
+
+    /**
+     * Zooms into the already-vertical frame. Coordinates are -1..1 with y pointing up,
+     * so the pan is scaled by (zoom - 1) to keep the frame edges covered.
+     */
+    private fun zoomEffect(zoom: Float, panX: Float, panY: Float): Effect {
+        val m = Matrix()
+        m.postScale(zoom, zoom)
+        m.postTranslate(-panX * (zoom - 1f), panY * (zoom - 1f))
+        return MatrixTransformation { _ -> m }
     }
 
     private fun volume(gain: Float): AudioProcessor {

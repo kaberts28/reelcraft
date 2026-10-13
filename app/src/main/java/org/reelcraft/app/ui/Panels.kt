@@ -2,6 +2,11 @@
 
 package org.reelcraft.app.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -134,6 +139,7 @@ fun EditPanel(vm: EditorViewModel) {
             OutlinedButton(onClick = { vm.moveSelected(1) }) { Text("Move later") }
             OutlinedButton(onClick = { vm.deleteSelected() }) { Text("Delete", color = Palette.Danger) }
         }
+        ZoomControls(vm, src.id)
     } else {
         Note("No piece selected.")
     }
@@ -166,6 +172,37 @@ fun EditPanel(vm: EditorViewModel) {
             }
         }
     }
+}
+
+@Composable
+private fun ZoomControls(vm: EditorViewModel, sourceId: Long) {
+    val s = vm.source(sourceId) ?: return
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Palette.Raise).padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text("Zoom and position", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = Palette.Fg)
+        Note("Crop into this clip, for example to remove black bars that are part of the original video. Applies to every piece of this clip.")
+        Spacer(Modifier.height(4.dp))
+        LabeledSlider("Zoom", s.zoom, String.format(Locale.US, "%.2f×", s.zoom), 1f..3.5f,
+            { vm.setFraming(s.id, it, s.panX, s.panY) })
+        if (s.zoom > 1.001f) {
+            LabeledSlider("Left / right", s.panX, panLabel(s.panX, "left", "right"), -1f..1f,
+                { vm.setFraming(s.id, s.zoom, it, s.panY) })
+            LabeledSlider("Up / down", s.panY, panLabel(s.panY, "top", "bottom"), -1f..1f,
+                { vm.setFraming(s.id, s.zoom, s.panX, it) })
+        }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = { vm.setFraming(s.id, 1.25f, 0f, 0f) }) { Text("Fill black bars") }
+            if (s.zoom > 1.001f) TextButton(onClick = { vm.setFraming(s.id, 1f, 0f, 0f) }) { Text("Reset") }
+        }
+    }
+}
+
+private fun panLabel(v: Float, neg: String, pos: String): String = when {
+    v < -0.02f -> "${(-v * 100).toInt()}% $neg"
+    v > 0.02f -> "${(v * 100).toInt()}% $pos"
+    else -> "centre"
 }
 
 // ---------- Auto-cut ----------
@@ -337,6 +374,11 @@ fun AudioPanel(vm: EditorViewModel, onPickMusic: () -> Unit) {
 @Composable
 fun ExportPanel(vm: EditorViewModel) {
     val context = LocalContext.current
+    val askStorage = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        val done = vm.exportState as? ExportState.Done
+        if (granted && done != null) vm.saveToGallery(done.file)
+        else if (!granted) vm.message = "ReelCraft needs storage access to save into your gallery. You can still use Share."
+    }
     Heading("Export", "Saves a vertical MP4 with no watermark, ready for TikTok, Reels, Shorts and WhatsApp Status.")
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Label("Quality")
@@ -373,7 +415,15 @@ fun ExportPanel(vm: EditorViewModel) {
                     Text(String.format(Locale.US, "%.1f MB · %s", st.bytes / 1_048_576.0, st.file.name), fontSize = 12.sp, fontFamily = FontFamily.Monospace, color = Palette.Muted)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = { context.startActivity(vm.shareIntent(st.file)) }) { Text("Share to TikTok, WhatsApp…") }
-                        if (vm.canSaveToGallery) OutlinedButton(onClick = { vm.saveToGallery(st.file) }) { Text("Save to gallery") }
+                        OutlinedButton(
+                            onClick = {
+                                val granted = !vm.needsStoragePermission || ContextCompat.checkSelfPermission(
+                                    context, Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                                ) == PackageManager.PERMISSION_GRANTED
+                                if (granted) vm.saveToGallery(st.file) else askStorage.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                            },
+                            enabled = !vm.savingToGallery,
+                        ) { Text(if (vm.savingToGallery) "Saving…" else "Save to gallery") }
                     }
                 }
             }

@@ -13,7 +13,15 @@ ReelCraft is built for creators on everyday Android phones, starting in East Afr
 
 Requires Android 8.0 or newer. Test builds update in place: install a newer one over the old one.
 
-There is also a browser version of the first prototype in [`web/index.html`](web/index.html).
+### On iPhone
+
+iPhones can't install the Android app, so use the **web version** in Safari: **https://kaberts28.github.io/reelcraft/**
+
+1. Open the link in Safari.
+2. Tap the Share button, then **Add to Home Screen** to keep it like an app.
+3. Tap **Add clips**, edit, then **Export**. When it's done, tap **Save or share**, then **Save Video** to put it in Photos.
+
+The web version has the same editing tools as the app. Export plays the video once while it records, so it takes as long as the video. It's an early test: please report anything that doesn't work, with your iPhone model and iOS version.
 
 ## What it does today (version 0.1)
 

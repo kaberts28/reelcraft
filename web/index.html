@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<html lang="en"><head><meta charset="utf-8"><meta name="apple-mobile-web-app-title" content="ReelCraft"><meta name="theme-color" content="#141519"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>ReelCraft</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -624,9 +624,10 @@ function pExport(){
     :`<div class="row"><button class="btn primary" id="bExport"${!mime||!T?' disabled':''}>Export video</button></div>`}
   ${S.out&&!S.exporting?`<div class="field result"><span class="lab">Your video · ${(S.out.blob.size/1048576).toFixed(1)} MB</span>
     <video src="${S.out.url}" controls playsinline></video>
-    <div class="row"><button class="btn primary" id="bSave">Save to device</button></div></div>`:''}`;
+    <div class="row">${canShareFiles()?'<button class="btn primary" id="bShare">Save or share</button>':''}<button class="btn${canShareFiles()?'':' primary'}" id="bSave">Download file</button></div>
+    ${canShareFiles()?'<p class="note">On iPhone: tap Save or share, then Save Video to put it in Photos, or pick WhatsApp or TikTok.</p>':''}</div>`:''}`;
   on('#resSeg','click',e=>{const b=e.target.closest('button');if(!b)return;S.res=+b.dataset.v;renderPanel()});
-  on('#bExport','click',doExport);on('#bCancel','click',()=>{S.cancel=true;endReached()});on('#bSave','click',saveOut);
+  on('#bExport','click',doExport);on('#bCancel','click',()=>{S.cancel=true;endReached()});on('#bSave','click',saveOut);on('#bShare','click',shareOut);
 }
 async function doExport(){
   const mime=pickMime();if(!mime||!S.pieces.length||S.exporting)return;
@@ -641,6 +642,14 @@ async function doExport(){
     S.out={blob,ext:mime.e,url:URL.createObjectURL(blob)};renderPanel();toast('Export finished.')};
   S.rec=rec;S.cancel=false;S.exporting=true;seekTL(0);render(exctx,W,H);renderPanel();
   setTimeout(()=>{rec.start(250);play()},300);
+}
+function outFile(){const d=new Date(),p=n=>String(n).padStart(2,'0');
+  return new File([S.out.blob],`reelcraft-${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}.${S.out.ext}`,{type:S.out.blob.type||'video/mp4'})}
+function canShareFiles(){try{return !!(S.out&&navigator.canShare&&navigator.canShare({files:[outFile()]}))}catch(e){return false}}
+async function shareOut(){
+  if(!S.out)return;
+  try{await navigator.share({files:[outFile()],title:'ReelCraft video'})}
+  catch(e){if(e&&e.name!=='AbortError')toast("Couldn't open sharing. Use Download file instead.")}
 }
 async function saveOut(){
   if(!S.out)return;
